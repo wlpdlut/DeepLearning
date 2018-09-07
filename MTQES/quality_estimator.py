@@ -1,4 +1,6 @@
 import torch
+from torch.autograd import Variable
+import torch.nn.functional as F
 from math import floor
 from torch.utils.data import TensorDataset, DataLoader
 from scipy.stats import spearmanr
@@ -45,10 +47,10 @@ def eval_(model, e):
             dev = dev.cuda()
         pred = model(dev)
         outs.append(pred)
-    preds = torch.cat(outs, 0)
-    print('Dev epoch {0} deltaAvg {1:5f} spearman {2:5f}'.format(e,
+    preds = torch.cat(outs, 0).squeeze()
+    print('Dev epoch {0} deltaAvg {1:5f} sme {2:5f}'.format(e,
                               DeltaAvg(label.tolist(), preds.data.squeeze().tolist()),
-                              spearmanr(label.tolist(), preds.data.squeeze().tolist())[0]
+                              F.mse_loss(Variable(label), preds.detach())[0]
                               ))
 
 
@@ -69,8 +71,8 @@ optim = torch.optim.Adam(model.parameters(), lr=0.05)
 for e in range(1, 20):
     model.train()
     for batch_idx, (train,label) in enumerate(dltrain):
-        train = torch.autograd.Variable(train)
-        label = torch.autograd.Variable(label.float())
+        train = Variable(train)
+        label = Variable(label.float())
 
         if use_gpu:
             train = train.cuda()
