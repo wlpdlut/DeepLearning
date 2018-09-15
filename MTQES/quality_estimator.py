@@ -1,11 +1,6 @@
 import torch
 from torch.autograd import Variable
-<<<<<<< HEAD
 from math import floor, sqrt
-=======
-import torch.nn.functional as F
-from math import floor
->>>>>>> 8638a7f8befdf3399dc37beb2cecc80547139f5b
 from torch.utils.data import TensorDataset, DataLoader
 from scipy.stats import spearmanr
 from seq2seq.evaluator.estimator import QEstimator
@@ -77,7 +72,6 @@ def eval_(model, e):
         if use_gpu:
             dev = dev.cuda()
         pred = model(dev)
-<<<<<<< HEAD
         outs.append(pred.cpu())
     preds = torch.cat(outs, 0).squeeze()
 
@@ -86,13 +80,6 @@ def eval_(model, e):
                               sqrt(mean_squared_error(label.tolist(), preds.detach().data.tolist())),
                               mean_absolute_error(label.tolist(), preds.detach().data.tolist()),
                               spearmanr(label.tolist(), preds.detach().data.tolist())[0]
-=======
-        outs.append(pred)
-    preds = torch.cat(outs, 0).squeeze()
-    print('Dev epoch {0} deltaAvg {1:5f} sme {2:5f}'.format(e,
-                              DeltaAvg(label.tolist(), preds.data.squeeze().tolist()),
-                              F.mse_loss(Variable(label), preds.detach())[0]
->>>>>>> 8638a7f8befdf3399dc37beb2cecc80547139f5b
                               ))
 
     if e > 18:
