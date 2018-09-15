@@ -102,9 +102,9 @@ class DecoderRNN(BaseRNN):
         if self.use_attention:
             output, attn = self.attention(output, encoder_outputs)
 
-        hhat = self.out(output.view(-1, self.hidden_size))
-        predicted_softmax = function(hhat).view(batch_size, output_size, -1)
-        return predicted_softmax, hidden, attn, hhat.view(batch_size, output_size, -1)
+        #hhat = self.out(output.view(-1, self.hidden_size))
+        predicted_softmax = function(self.out(output.view(-1, self.hidden_size))).view(batch_size, output_size, -1)
+        return predicted_softmax, hidden, attn, output
 
     def forward(self, inputs=None, encoder_hidden=None, encoder_outputs=None,
                     function=F.log_softmax, teacher_forcing_ratio=0):
@@ -153,6 +153,7 @@ class DecoderRNN(BaseRNN):
                     step_attn = None
                 decode(di, step_output, step_attn)
                 hhats.append(hhat[:, di, :])
+                #hhats.append(hhat)
         else:
             decoder_input = inputs[:, 0].unsqueeze(1)
             for di in range(max_length):
@@ -162,7 +163,8 @@ class DecoderRNN(BaseRNN):
                 symbols = decode(di, step_output, step_attn)
                 decoder_input = symbols
                 hhats.append(hhat.squeeze(1))
-
+                #hhats.append(hhat)
+        
         ret_dict[DecoderRNN.KEY_SEQUENCE] = sequence_symbols
         ret_dict[DecoderRNN.KEY_LENGTH] = lengths.tolist()
 

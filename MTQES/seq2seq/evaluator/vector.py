@@ -9,6 +9,9 @@ class Maxout(torch.nn.Module):
         self.pool_size = pool_size
 
     def forward(self, x):
+#        dims = [x.shape[0],x.shape[1],20000]
+#        x = x.view(-1,20002)[:,:20000].contiguous()
+#        x = x.view(*dims).contiguous()
         assert(x.shape[-1] % self.pool_size == 0)
         m, _ = x.view(*x.shape[:-1], x.shape[-1]//self.pool_size, self.pool_size).max(-1)
         return m
@@ -35,7 +38,7 @@ class Vector(object):
         self.src_vocab = src_vocab
         self.tgt_vocab = tgt_vocab
         self.batch_size = 64
-        self.maxout = Maxout(55)
+        #self.maxout = Maxout(20)
         self.pad = 1
 
     def predict(self, data):
@@ -49,7 +52,7 @@ class Vector(object):
 
                 src_id_seq = [self.src_vocab.stoi[tok] for tok in src_seq]
                 tgt_id_seq = [self.tgt_vocab.stoi[tok] for tok in tgt_seq]
-
+                #tgt_id_seq = [4] + tgt_id_seq
                 src_seqs.append(src_id_seq)
                 src_lens.append(len(src_seq))
 
@@ -74,8 +77,9 @@ class Vector(object):
             lengths = torch.LongTensor(src_lens).index_select(0, idx_sort).tolist()
             _, _, _, hhats = self.model(input_var, lengths, targets, teacher_forcing_ratio=1.0)
             hhats = [hhat.cpu().unsqueeze(1) for hhat in hhats]
-            hhat = self.maxout(torch.cat(hhats, 1).index_select(0, idx_unsort))
-
+            #hhat = self.maxout(torch.cat(hhats, 1).index_select(0, idx_unsort))
+            hhat = torch.cat(hhats, 1).index_select(0, idx_unsort)
+            
             res.append(hhat)
             if cur_idx % 128 == 0:
                 print(cur_idx)

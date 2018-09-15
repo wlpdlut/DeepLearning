@@ -14,11 +14,9 @@ data_dir = r'./data'
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--train_path', action='store', dest='train_path',
-                    default=os.path.join(data_dir, r'train/train.tsv'),
+                    default=os.path.join(data_dir, r'train/v7.tsv'),
                     help='Path to train data')
-parser.add_argument('--dev_path', action='store', dest='dev_path',
-                    default=os.path.join(data_dir, r'dev/dev.tsv'),
-                    help='Path to dev data')
+
 parser.add_argument('--expt_dir', action='store', dest='expt_dir', default='./experiment')
 parser.add_argument('--load_checkpoint', action='store', dest='load_checkpoint',
                     help='The name of the checkpoint to load, usually an encoded time string')
@@ -56,16 +54,13 @@ else:
         fields=[('src', src), ('tgt', tgt)],
         filter_pred=len_filter
     )
-    dev = torchtext.data.TabularDataset(
-        path=opt.dev_path, format='tsv',
-        fields=[('src', src), ('tgt', tgt)],
-        filter_pred=len_filter
-    )
-    src.build_vocab(train, max_size=50000)
-    tgt.build_vocab(train, max_size=50000)
+
+    src.build_vocab(train, max_size=20000-2)
+    tgt.build_vocab(train, max_size=20000-2)
     input_vocab = src.vocab
     output_vocab = tgt.vocab
-
+    print(len(src.vocab),len(tgt.vocab))
+    
     # Prepare loss
     weight = torch.ones(len(tgt.vocab))
     pad = tgt.vocab.stoi[tgt.pad_token]
@@ -77,7 +72,7 @@ else:
     optimizer = None
     if not opt.resume:
         # Initialize model
-        hidden_size=128
+        hidden_size = 100
         bidirectional = True
         encoder = EncoderRNN(len(src.vocab), max_len, hidden_size,
                              bidirectional=bidirectional, variable_lengths=True)
@@ -96,10 +91,11 @@ else:
                           checkpoint_every=50,
                           print_every=10, expt_dir=opt.expt_dir)
 
+    
     seq2seq = t.train(seq2seq, train,
-                      num_epochs=1, dev_data=dev,
+                      num_epochs=2, dev_data=None,
                       optimizer=optimizer,
-                      teacher_forcing_ratio=1.0,
+                      teacher_forcing_ratio=0.20,
                       resume=opt.resume)
 
     torch.save(seq2seq, os.path.join(data_dir, 'persistence/seq2seq_model.pkl'))
