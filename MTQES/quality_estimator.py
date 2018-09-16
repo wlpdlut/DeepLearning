@@ -5,13 +5,12 @@ from torch.utils.data import TensorDataset, DataLoader
 from scipy.stats import spearmanr
 from seq2seq.evaluator.estimator import QEstimator
 from sklearn.metrics import mean_squared_error,mean_absolute_error
-from matplotlib.pylab import plt
-import pandas as pd
 
 
 use_gpu = torch.cuda.is_available()
 
-def logcosh(pred,true):
+
+def logcosh(pred, true):
     loss = torch.log(torch.cosh(pred-true))
     return torch.sum(loss)
 
@@ -45,17 +44,12 @@ def avgDelta(reference, preds, mulfactor=100.0):
         AvgDelta = 0
     return abs(AvgDelta)
 
+
 def create_target(fname):
     with open(fname, 'r', encoding='utf8') as fin:
         lines = fin.readlines()
     lines = [float(line.strip('\n')) for line in lines]
     return torch.FloatTensor(lines)
-
-
-def plots(ref, preds):
-    df = pd.DataFrame({'REF':ref,'RED':preds})
-    df.plot()
-    #plt.show()
 
 
 def eval_(model, e):
@@ -75,18 +69,16 @@ def eval_(model, e):
         outs.append(pred.cpu())
     preds = torch.cat(outs, 0).squeeze()
 
+    avg_delta = avgDelta(label.tolist(), preds.data.tolist())
     print('Dev epoch {0} deltaAvg {1:5f} rmse {2:5f}, mae {3:5f}, spearmanr {4:5f}'.format(e,
-                              avgDelta(label.tolist(), preds.data.tolist()),
+                              avg_delta,
                               sqrt(mean_squared_error(label.tolist(), preds.detach().data.tolist())),
                               mean_absolute_error(label.tolist(), preds.detach().data.tolist()),
                               spearmanr(label.tolist(), preds.detach().data.tolist())[0]
                               ))
 
-    if e > 18:
-        with open('./data/dev/dec.res', 'w', encoding='utf8') as fout:
-            lines = preds.detach().data.tolist()
-            lines = [str(line) for line in lines]
-            fout.writelines('\n'.join(lines))
+    return avg_delta
+
 
 train = torch.load('./data/persistence/train_vectors.pkl')
 target = create_target('./data/train/train.hter')
@@ -95,13 +87,15 @@ dstrain = TensorDataset(train.data, target)
 dltrain = DataLoader(dstrain, batch_size=32, shuffle=True)
 
 
-model = QEstimator(train.data.shape[-1], 100)
+model = QEstimator(train.data.shape[-1], 300)
 if use_gpu:
     model = model.cuda()
-
-#criterion = torch.nn.MSELoss()
 criterion = logcosh
 optim = torch.optim.Adadelta(model.parameters(), lr=0.001)
+
+
+early_stop = 0
+max_delta_avg = [0, 0]
 
 for e in range(1, 100):
     model.train()
@@ -123,8 +117,15 @@ for e in range(1, 100):
         optim.step()
 
         if batch_idx!=0 and batch_idx%50 == 0:
-            print('epoch {0} deltaAvg {1:5f} spearman {2:5f}'.
-                  format(e,
-                         avgDelta(label.cpu().data.tolist(), outs.cpu().data.squeeze().tolist()),
-                         spearmanr(label.cpu().data.tolist(), outs.cpu().data.squeeze().tolist())[0]))
-    eval_(model, e)
+            print('epoch {0} deltaAvg {1:5f}'.
+                  format(e, avgDelta(label.cpu().data.tolist(), outs.cpu().data.squeeze().tolist())) )
+
+    avg_delta = eval_(model, e)
+    if avg_delta > max_delta_avg[0]:
+        max_delta_avg[0] = avg_delta
+        max_delta_avg[1] = e
+        early_stop = 0
+    else:
+        early_stop += 1
+        if early_stop > 10:
+            print('early stop at {0} epoch, average delta {1}'.foramt(max_delta_avg[1], max_delta_avg[0]))

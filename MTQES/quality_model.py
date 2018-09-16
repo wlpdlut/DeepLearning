@@ -57,10 +57,9 @@ else:
 
     src.build_vocab(train, max_size=20000-2)
     tgt.build_vocab(train, max_size=20000-2)
-    input_vocab = src.vocab
-    output_vocab = tgt.vocab
-    print(len(src.vocab),len(tgt.vocab))
-    
+
+    sos_id = tgt.vocab.stoi['<sos>']
+
     # Prepare loss
     weight = torch.ones(len(tgt.vocab))
     pad = tgt.vocab.stoi[tgt.pad_token]

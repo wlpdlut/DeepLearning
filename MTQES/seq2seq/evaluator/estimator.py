@@ -5,12 +5,7 @@ import torch.nn as nn
 class QEstimator(nn.Module):
     def __init__(self, input_dim, hidden_dim):
         super(QEstimator, self).__init__()
-        
-        self.prev = nn.Sequential(
-                nn.Dropout(p=0.1),
-                nn.Linear(input_dim,1000),
-                nn.ReLU())
-        
+
         self.dropout = nn.Dropout(p=0.1)
         
         self.rnn = nn.GRU(input_size=input_dim,
@@ -43,6 +38,3 @@ class QEstimator(nn.Module):
 
         # [B,1]
         return F.relu(F.tanh(self.fc(reshaped)))
-        #return F.sigmoid(self.fc(reshaped))
-
-
